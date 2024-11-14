@@ -2,33 +2,38 @@ package controller
 
 import (
 	"github.com/gin-gonic/gin"
-	"one-api/common"
-	"one-api/model"
-	"one-api/relay/channel/openai"
+	"github.com/songquanpeng/one-api/common/config"
+	"github.com/songquanpeng/one-api/common/ctxkey"
+	"github.com/songquanpeng/one-api/model"
+	relaymodel "github.com/songquanpeng/one-api/relay/model"
 )
 
 func GetSubscription(c *gin.Context) {
-	var remainQuota int
-	var usedQuota int
+	var remainQuota int64
+	var usedQuota int64
 	var err error
 	var token *model.Token
 	var expiredTime int64
-	if common.DisplayTokenStatEnabled {
-		tokenId := c.GetInt("token_id")
+	if config.DisplayTokenStatEnabled {
+		tokenId := c.GetInt(ctxkey.TokenId)
 		token, err = model.GetTokenById(tokenId)
-		expiredTime = token.ExpiredTime
-		remainQuota = token.RemainQuota
-		usedQuota = token.UsedQuota
+		if err == nil {
+			expiredTime = token.ExpiredTime
+			remainQuota = token.RemainQuota
+			usedQuota = token.UsedQuota
+		}
 	} else {
-		userId := c.GetInt("id")
+		userId := c.GetInt(ctxkey.Id)
 		remainQuota, err = model.GetUserQuota(userId)
-		usedQuota, err = model.GetUserUsedQuota(userId)
+		if err != nil {
+			usedQuota, err = model.GetUserUsedQuota(userId)
+		}
 	}
 	if expiredTime <= 0 {
 		expiredTime = 0
 	}
 	if err != nil {
-		Error := openai.Error{
+		Error := relaymodel.Error{
 			Message: err.Error(),
 			Type:    "upstream_error",
 		}
@@ -39,8 +44,8 @@ func GetSubscription(c *gin.Context) {
 	}
 	quota := remainQuota + usedQuota
 	amount := float64(quota)
-	if common.DisplayInCurrencyEnabled {
-		amount /= common.QuotaPerUnit
+	if config.DisplayInCurrencyEnabled {
+		amount /= config.QuotaPerUnit
 	}
 	if token != nil && token.UnlimitedQuota {
 		amount = 100000000
@@ -58,19 +63,19 @@ func GetSubscription(c *gin.Context) {
 }
 
 func GetUsage(c *gin.Context) {
-	var quota int
+	var quota int64
 	var err error
 	var token *model.Token
-	if common.DisplayTokenStatEnabled {
-		tokenId := c.GetInt("token_id")
+	if config.DisplayTokenStatEnabled {
+		tokenId := c.GetInt(ctxkey.TokenId)
 		token, err = model.GetTokenById(tokenId)
 		quota = token.UsedQuota
 	} else {
-		userId := c.GetInt("id")
+		userId := c.GetInt(ctxkey.Id)
 		quota, err = model.GetUserUsedQuota(userId)
 	}
 	if err != nil {
-		Error := openai.Error{
+		Error := relaymodel.Error{
 			Message: err.Error(),
 			Type:    "one_api_error",
 		}
@@ -80,8 +85,8 @@ func GetUsage(c *gin.Context) {
 		return
 	}
 	amount := float64(quota)
-	if common.DisplayInCurrencyEnabled {
-		amount /= common.QuotaPerUnit
+	if config.DisplayInCurrencyEnabled {
+		amount /= config.QuotaPerUnit
 	}
 	usage := OpenAIUsageResponse{
 		Object:     "list",

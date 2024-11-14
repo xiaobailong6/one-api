@@ -27,6 +27,7 @@ const OperationSetting = () => {
     QuotaRemindThreshold: 0,
     PreConsumedQuota: 0,
     ModelRatio: "",
+    CompletionRatio: "",
     GroupRatio: "",
     TopUpLink: "",
     ChatLink: "",
@@ -52,8 +53,11 @@ const OperationSetting = () => {
     if (success) {
       let newInputs = {};
       data.forEach((item) => {
-        if (item.key === "ModelRatio" || item.key === "GroupRatio") {
+        if (item.key === "ModelRatio" || item.key === "GroupRatio" || item.key === "CompletionRatio") {
           item.value = JSON.stringify(JSON.parse(item.value), null, 2);
+        }
+        if (item.value === '{}') {
+          item.value = '';
         }
         newInputs[item.key] = item.value;
       });
@@ -132,6 +136,13 @@ const OperationSetting = () => {
             return;
           }
           await updateOption("GroupRatio", inputs.GroupRatio);
+        }
+        if (originInputs['CompletionRatio'] !== inputs.CompletionRatio) {
+          if (!verifyJSON(inputs.CompletionRatio)) {
+            showError('补全倍率不是合法的 JSON 字符串');
+            return;
+          }
+          await updateOption('CompletionRatio', inputs.CompletionRatio);
         }
         break;
       case "quota":
@@ -360,7 +371,7 @@ const OperationSetting = () => {
                 value={inputs.ChannelDisableThreshold}
                 onChange={handleInputChange}
                 label="最长响应时间"
-                placeholder="单位秒，当运行通道全部测试时，超过此时间将自动禁用通道"
+                placeholder="单位秒，当运行渠道全部测试时，超过此时间将自动禁用渠道"
                 disabled={loading}
               />
             </FormControl>
@@ -381,7 +392,7 @@ const OperationSetting = () => {
             </FormControl>
           </Stack>
           <FormControlLabel
-            label="失败时自动禁用通道"
+            label="失败时自动禁用渠道"
             control={
               <Checkbox
                 checked={inputs.AutomaticDisableChannelEnabled === "true"}
@@ -391,7 +402,7 @@ const OperationSetting = () => {
             }
           />
           <FormControlLabel
-            label="成功时自动启用通道"
+            label="成功时自动启用渠道"
             control={
               <Checkbox
                 checked={inputs.AutomaticEnableChannelEnabled === "true"}
@@ -500,7 +511,20 @@ const OperationSetting = () => {
               placeholder="为一个 JSON 文本，键为模型名称，值为倍率"
             />
           </FormControl>
-
+          <FormControl fullWidth>
+            <TextField
+              multiline
+              maxRows={15}
+              id="channel-CompletionRatio-label"
+              label="补全倍率"
+              value={inputs.CompletionRatio}
+              name="CompletionRatio"
+              onChange={handleInputChange}
+              aria-describedby="helper-text-channel-CompletionRatio-label"
+              minRows={5}
+              placeholder="为一个 JSON 文本，键为模型名称，值为倍率，此处的倍率设置是模型补全倍率相较于提示倍率的比例，使用该设置可强制覆盖 One API 的内部比例"
+            />
+          </FormControl>
           <FormControl fullWidth>
             <TextField
               multiline
